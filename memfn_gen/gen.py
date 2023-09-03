@@ -23,6 +23,10 @@ class Noexcept(IntFlag):
     yes = auto()
 
 
+def out(cond: bool, right: str, wrong: str = ""):
+    return right if cond else wrong
+
+
 @dataclass
 class Formatter:
     free_fn_format: str
@@ -42,6 +46,7 @@ class FreeFnConfig:
                 dict(
                     type="free_fn_ptr",
                     noexcept=self.noexcept == Noexcept.yes,
+                    out=out,
                 ),
             )
         )
@@ -54,7 +59,10 @@ class MemberVarConfig:
             eval(
                 f"f'''{formatter.member_var_format}'''",
                 {},
-                dict(type="member_var_ptr"),
+                dict(
+                    type="member_var_ptr",
+                    out=out,
+                ),
             )
         )
 
@@ -99,6 +107,7 @@ class MemberFnConfig:
                     const=const,
                     volatile=volatile,
                     ref=ref,
+                    out=out,
                 ),
             )
         )
@@ -128,12 +137,18 @@ class MemberFnConfig:
 @click.option(
     "-f",
     "--free-fn",
-    default="{type} auto (*)(Args...){' noexcept ' if noexcept else ' '}-> R",
+    default="{type} auto (*)(Args...){out(noexcept, ' noexcept ')}-> R",
 )
 @click.option(
     "-f",
     "--member-fn",
-    default="""{type} auto (T::*)(Args...){' const' if const else ''}{' volatile' if volatile else ''}{f' {ref}' if ref else ''}{' noexcept ' if noexcept else ' '}-> R""",
+    default=(
+        "{type} auto (T::*)(Args...)"
+        "{out(const, ' const')}"
+        "{out(volatile, ' volatile')}"
+        "{out(ref, f' {ref}')}"
+        "{out(noexcept, ' noexcept ')}-> R"
+    ),
 )
 @click.option("-f", "--member-var", default="{type} R (T::*)")
 def main(config, free_fn, member_var, member_fn):
