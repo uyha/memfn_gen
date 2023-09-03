@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+#shellcheck disable=SC2034
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+(
+  cd "$SCRIPT_DIR"
+
+  poetry run python ./memfn_gen/gen.py \
+    --config $((0x7F313)) \
+    --free-fn \
+    "
+template<typename R, typename... Args>
+struct fn_trait_impl<R (*)(Args...) {out(noexcept, 'noexcept')}> {{
+  static constexpr auto is_noexcept = {out(noexcept, 'true', 'false')};
+  static constexpr FnType type      = FnType::{type};
+  using return_t                    = R;
+  using arguments                   = type_list<Args...>;
+}};" \
+    --member-var \
+    "
+template<typename R, typename T>
+struct fn_trait_impl<R (T::*)> {{
+  static constexpr FnType type = FnType::{type};
+  using return_t               = R;
+  using object_t               = T;
+  using argumnets              = type_list<>;
+}};" \
+    --member-fn \
+    "
+template<typename R, typename T, typename... Args>
+struct fn_trait_impl<R (T::*)(Args...){out(const, ' const')}{out(volatile, ' volatile')}{out(ref, f' {ref}')}{out(noexcept, ' noexcept')}> {{
+  static constexpr auto is_noexcept = {out(noexcept, 'true', 'false')};
+  static constexpr FnType type      = FnType::{type};
+  using return_t                    = R;
+  using object_t                    = T{out(const, ' const')}{out(volatile, ' volatile')}{out(ref, f' {ref}')};
+  using arguments                   = type_list<Args...>;
+}};"
+)
